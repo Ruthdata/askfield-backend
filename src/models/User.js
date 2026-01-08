@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 
 const userSchema = new mongoose.Schema(
   {
@@ -38,6 +39,12 @@ const userSchema = new mongoose.Schema(
     isVerified: {
       type: Boolean,
       default: false,
+    },
+    verificationToken: {
+      type: String,
+    },
+    verificationTokenExpiry: {
+      type: Date,
     },
 
     // Additional fields specific to contributors
@@ -125,7 +132,7 @@ const userSchema = new mongoose.Schema(
         type: String,
         required: function() { return this.role === "participant"; }
       },
-      linkedInProfile: { type: String }, // Optional
+      linkedInProfile: { type: String },
       availabilityToParticipate: { 
         type: String,
         required: function() { return this.role === "participant"; }
@@ -146,15 +153,23 @@ const userSchema = new mongoose.Schema(
 );
 
 // Hash password before saving
-// FIXED: Removed next() call - not needed with async functions in Mongoose
-userSchema.pre("save", async function () {
-  if (!this.isModified("password")) return;
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);
+  next();
 });
 
 // Method to compare passwords
 userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// Method to generate verification token
+userSchema.methods.generateVerificationToken = function () {
+  const token = crypto.randomBytes(32).toString("hex");
+  this.verificationToken = crypto.createHash("sha256").update(token).digest("hex");
+  this.verificationTokenExpiry = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+  return token;
 };
 
 const User = mongoose.model("User", userSchema);
