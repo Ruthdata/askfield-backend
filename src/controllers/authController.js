@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { sendVerificationEmail, sendWelcomeEmail } from "../services/email.service.js";
+import { verifyGoogleToken } from "../utils/googleAuth.js";
 
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "30d" });
@@ -290,4 +291,43 @@ export const getMe = async (req, res) => {
 // @access  Public
 export const logout = async (req, res) => {
   res.status(200).json({ success: true, message: "Logout successful. Please delete your token on the client side." });
+};
+
+// POST /api/auth/google
+export const googleAuth = async (req, res) => {
+  try {
+    const { code, role } = req.body;  
+
+    const googleUser = await verifyGoogleToken(code);  
+
+    let user = await User.findOne({ email: googleUser.email });
+
+    if (!user) {
+      user = await User.create({
+        firstName: googleUser.given_name || "Google",
+        lastName: googleUser.family_name || "User",
+        email: googleUser.email,
+        password: crypto.randomBytes(32).toString("hex"),
+        role,
+        isVerified: true,
+        profileCompleted: false,
+      });
+    }
+
+    const tokenJwt = generateToken(user._id);
+
+    res.status(200).json({
+      success: true,
+      token: tokenJwt,
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        profileCompleted: user.profileCompleted,
+      },
+    });
+  } catch (error) {
+    console.error("Google auth error:", error);
+    res.status(500).json({ success: false, message: "Google authentication failed" });
+  }
 };
