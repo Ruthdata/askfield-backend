@@ -10,10 +10,14 @@ import {
   updateProfile
 } from "../controllers/authController.js";
 import { protect } from "../middleware/authMiddleware.js";
+import { googleAuth } from "../controllers/authController.js";
 
 const router = express.Router();
 
+
+
 // Public routes
+router.post("/google", googleAuth);
 router.post("/register", register);                    
 router.post("/login", login);                         
 router.post("/logout", logout);

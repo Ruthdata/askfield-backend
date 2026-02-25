@@ -2,9 +2,10 @@ import nodemailer from "nodemailer";
 
 const createTransporter = () => {
   return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: Number(process.env.EMAIL_PORT) || 587,
-    secure: false, // true for port 465
+    host: "smtp.zoho.com",
+    port: 587,
+    secure: false,        // false for 587 (STARTTLS)
+    requireTLS: true,     // ← add this line
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASSWORD,
